@@ -4,11 +4,13 @@ import { MediaCategory } from '../generated/prisma/enums.ts';
 export { MediaCategory };
 export const MEDIA_CATEGORIES = Object.values(MediaCategory);
 
-export const ALLOWED_MIME_TYPES = Object.freeze({
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'application/pdf': '.pdf',
+// Signatures are the magic bytes each format starts with; the client-declared MIME type can be spoofed.
+export const ALLOWED_FILE_TYPES = Object.freeze({
+  'image/jpeg': { extension: '.jpg', signature: [0xff, 0xd8, 0xff] },
+  'image/png': { extension: '.png', signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
+  'application/pdf': { extension: '.pdf', signature: [0x25, 0x50, 0x44, 0x46, 0x2d] },
 });
+export const ALLOWED_MIME_TYPES = Object.freeze(Object.keys(ALLOWED_FILE_TYPES));
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_BULK_FILES = 5;

@@ -11,6 +11,7 @@ const envSchema = z.object({
     protocol: /^postgres(ql)?$/,
     error: 'Must be a PostgreSQL connection URL',
   }),
+  UPLOAD_DIR: z.string().trim().min(1).default('uploads'),
 });
 
 const parsed = envSchema.safeParse(process.env);
