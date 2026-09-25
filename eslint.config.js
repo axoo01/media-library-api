@@ -3,7 +3,7 @@ import globals from 'globals';
 import prettierConfig from 'eslint-config-prettier';
 
 export default [
-  { ignores: ['node_modules/', 'uploads/', 'coverage/'] },
+  { ignores: ['node_modules/', 'uploads/', 'coverage/', 'src/generated/'] },
 
   js.configs.recommended,
 

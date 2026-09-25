@@ -1,4 +1,6 @@
 node_modules/
 uploads/
 coverage/
+src/generated/
+prisma/migrations/
 package-lock.json

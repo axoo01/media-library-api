@@ -6,6 +6,9 @@ node_modules/
 .env.*
 !.env.example
 
+# Generated Prisma client (rebuilt by postinstall)
+src/generated/
+
 # Uploaded files (keep the folder itself)
 uploads/*
 !uploads/.gitkeep
