@@ -4,7 +4,8 @@ import AppError from '../utils/AppError.js';
 import logger from '../utils/logger.js';
 import { sendError } from '../utils/apiResponse.js';
 import { cleanupUploadedFiles } from './upload.js';
-import { MAX_BULK_FILES, MAX_FILE_SIZE } from '../models/Media.js';
+import env from '../config/env.js';
+import { MAX_BULK_FILES } from '../models/Media.js';
 
 const PRISMA_ERROR_MAP = {
   P2025: () => AppError.notFound('Media not found'),
@@ -15,7 +16,7 @@ const PRISMA_ERROR_MAP = {
 };
 
 const MULTER_MESSAGES = {
-  LIMIT_FILE_SIZE: `File exceeds the ${MAX_FILE_SIZE / (1024 * 1024)}MB size limit`,
+  LIMIT_FILE_SIZE: `File exceeds the ${env.MAX_FILE_SIZE_MB}MB size limit`,
   LIMIT_FILE_COUNT: `A maximum of ${MAX_BULK_FILES} files is allowed`,
   LIMIT_UNEXPECTED_FILE: 'Unexpected file field, or too many files for this field',
 };

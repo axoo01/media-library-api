@@ -12,7 +12,6 @@ export const ALLOWED_FILE_TYPES = Object.freeze({
 });
 export const ALLOWED_MIME_TYPES = Object.freeze(Object.keys(ALLOWED_FILE_TYPES));
 
-export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const MAX_BULK_FILES = 5;
 
 export const SORTABLE_FIELDS = Object.freeze(['createdAt', 'updatedAt', 'title', 'fileSize']);

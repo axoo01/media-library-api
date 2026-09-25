@@ -9,12 +9,13 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "dev": "node --watch server.js",
-    "start": "node server.js",
+    "dev": "NODE_ENV=development node --watch server.js",
+    "start": "NODE_ENV=production node server.js",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
+    "db:deploy:test": "NODE_ENV=test prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "test:postman": "node postman/generate-large-fixture.js && newman run postman/media-library-api.postman_collection.json -e postman/local.postman_environment.json",
@@ -35,7 +36,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
-    "dotenv": "^18.0.3",
+    "dotenv-flow": "^4.1.0",
     "express": "^5.2.1",
     "multer": "^2.4.0",
     "pg": "^8.23.0",
