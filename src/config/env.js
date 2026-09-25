@@ -7,6 +7,10 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10000),
+  DATABASE_URL: z.url({
+    protocol: /^postgres(ql)?$/,
+    error: 'Must be a PostgreSQL connection URL',
+  }),
 });
 
 const parsed = envSchema.safeParse(process.env);

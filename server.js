@@ -5,7 +5,16 @@ import { once } from 'node:events';
 import { promisify } from 'node:util';
 import app from './src/app.js';
 import env from './src/config/env.js';
+import { connectDatabase, disconnectDatabase } from './src/config/db.js';
 import logger from './src/utils/logger.js';
+
+try {
+  await connectDatabase();
+} catch (err) {
+  logger.error('Failed to connect to the database', err);
+  process.exit(1);
+}
+onShutdown(disconnectDatabase);
 
 const server = app.listen(env.PORT);
 
