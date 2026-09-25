@@ -19,6 +19,7 @@ enum MediaCategory {
 
 model Media {
   id           String        @id @default(uuid(7)) @db.Uuid
+  // Collation "und-x-icu" is set in the title_icu_collation migration (Prisma has no attribute for it).
   title        String        @db.VarChar(255)
   filePath     String        @unique @map("file_path")
   originalName String        @map("original_name") @db.VarChar(255)
@@ -31,6 +32,7 @@ model Media {
 
   @@index([category])
   @@index([createdAt])
+  @@index([title, id])
   @@index([tags], type: Gin)
   @@map("media")
 }
