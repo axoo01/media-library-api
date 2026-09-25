@@ -94,9 +94,7 @@ const seed = async () => {
   await Promise.all(records.map(writeSeedFile));
   await prisma.media.createMany({ data: records });
 
-  logger.info(
-    `Seed complete: removed ${removed} previous seed records, inserted ${records.length}`,
-  );
+  logger.info({ removed, inserted: records.length }, 'Seed complete');
 };
 
 if (env.isProduction) {
@@ -107,7 +105,7 @@ if (env.isProduction) {
 try {
   await seed();
 } catch (err) {
-  logger.error('Seeding failed', err);
+  logger.error({ err }, 'Seeding failed');
   process.exitCode = 1;
 } finally {
   await prisma.$disconnect();

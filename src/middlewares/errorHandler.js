@@ -55,12 +55,14 @@ const errorHandler = async (err, req, res, next) => {
   await cleanupUploadedFiles(req);
 
   const appError = normalizeError(err);
-  const context = `${req.method} ${req.originalUrl} -> ${appError.statusCode}`;
+  const context = { method: req.method, url: req.originalUrl, statusCode: appError.statusCode };
 
-  if (appError.isOperational) {
-    logger.warn(`${context}: ${appError.message}`);
+  if (appError.statusCode === 404) {
+    logger.warn(context, `Resource not found: ${appError.message}`);
+  } else if (appError.isOperational) {
+    logger.warn({ ...context, details: appError.details }, appError.message);
   } else {
-    logger.error(`${context}: unhandled error`, err);
+    logger.error({ ...context, err }, 'Unhandled error');
   }
 
   return sendError(res, appError);

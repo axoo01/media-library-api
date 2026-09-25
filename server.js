@@ -12,7 +12,7 @@ import logger from './src/utils/logger.js';
 try {
   await connectDatabase();
 } catch (err) {
-  logger.error('Failed to connect to the database', err);
+  logger.error({ err }, 'Failed to connect to the database');
   process.exit(1);
 }
 onShutdown(disconnectDatabase);
@@ -20,7 +20,7 @@ onShutdown(disconnectDatabase);
 try {
   await ensureUploadDir();
 } catch (err) {
-  logger.error('Failed to prepare the upload directory', err);
+  logger.error({ err }, 'Failed to prepare the upload directory');
   process.exit(1);
 }
 
@@ -29,9 +29,9 @@ const server = app.listen(env.PORT);
 try {
   // Resolves on 'listening', rejects on 'error' (e.g. EADDRINUSE when the port is taken).
   await once(server, 'listening');
-  logger.info(`Media Library API listening on port ${env.PORT} (${env.NODE_ENV})`);
+  logger.info({ port: env.PORT, env: env.NODE_ENV }, `Server started on port ${env.PORT}`);
 } catch (err) {
-  logger.error(`Failed to start server on port ${env.PORT}`, err);
+  logger.error({ err, port: env.PORT }, 'Failed to start server');
   process.exit(1);
 }
 

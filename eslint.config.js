@@ -29,12 +29,6 @@ export default [
     },
   },
 
-  // The logger is the only module allowed to write to the console.
-  {
-    files: ['src/utils/logger.js'],
-    rules: { 'no-console': 'off' },
-  },
-
   // Must be last: turns off stylistic rules that conflict with Prettier.
   prettierConfig,
 ];

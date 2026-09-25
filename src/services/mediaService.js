@@ -21,16 +21,25 @@ const toMediaRecord = (file, { title, tags, category }) => ({
 const titleFromFilename = (filename) =>
   path.parse(filename).name.trim().slice(0, MAX_NAME_LENGTH) || 'Untitled';
 
-export const createMedia = (file, metadata) =>
-  mediaRepository.create(toMediaRecord(file, metadata));
+const logUpload = ({ id, originalName, mimeType, fileSize, filePath }) =>
+  logger.info({ mediaId: id, originalName, mimeType, fileSize, filePath }, 'File uploaded');
+
+export const createMedia = async (file, metadata) => {
+  const media = await mediaRepository.create(toMediaRecord(file, metadata));
+  logUpload(media);
+  return media;
+};
 
 // Bulk uploads share tags and category; each title is derived from its original filename.
-export const createMediaBatch = (files, metadata) =>
-  mediaRepository.createMany(
+export const createMediaBatch = async (files, metadata) => {
+  const records = await mediaRepository.createMany(
     files.map((file) =>
       toMediaRecord(file, { ...metadata, title: titleFromFilename(file.originalname) }),
     ),
   );
+  records.forEach(logUpload);
+  return records;
+};
 
 export const getMediaById = async (id) => {
   const media = await mediaRepository.findById(id);
@@ -67,6 +76,9 @@ export const deleteMedia = async (id) => {
   try {
     await fileRepository.removeFile(media.filePath);
   } catch (err) {
-    logger.error(`Media ${id} deleted but its file could not be removed: ${media.filePath}`, err);
+    logger.error(
+      { err, mediaId: id, filePath: media.filePath },
+      'Media deleted but its file could not be removed',
+    );
   }
 };

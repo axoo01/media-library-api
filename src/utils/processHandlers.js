@@ -12,10 +12,10 @@ export const shutdown = async (reason, exitCode = 0) => {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
-  logger.info(`Graceful shutdown started (${reason})`);
+  logger.info({ reason }, 'Graceful shutdown started');
 
   const forceExitTimer = setTimeout(() => {
-    logger.error(`Shutdown timed out after ${env.SHUTDOWN_TIMEOUT_MS}ms, forcing exit`);
+    logger.error({ timeoutMs: env.SHUTDOWN_TIMEOUT_MS }, 'Shutdown timed out, forcing exit');
     process.exit(1);
   }, env.SHUTDOWN_TIMEOUT_MS);
   // unref() so this timer alone never keeps the process alive once cleanup finishes.
@@ -29,7 +29,7 @@ export const shutdown = async (reason, exitCode = 0) => {
     }
     logger.info('Graceful shutdown complete');
   } catch (err) {
-    logger.error('Error during graceful shutdown', err);
+    logger.error({ err }, 'Error during graceful shutdown');
     code = 1;
   }
 
@@ -38,19 +38,19 @@ export const shutdown = async (reason, exitCode = 0) => {
 
 // Process state is unreliable after a synchronous throw, so exit without async cleanup.
 process.on('uncaughtException', (err) => {
-  logger.error('UNCAUGHT EXCEPTION, shutting down immediately', err);
+  logger.error({ err }, 'Uncaught exception, shutting down immediately');
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
-  logger.error('UNHANDLED REJECTION, shutting down gracefully', reason);
+  logger.error({ err: reason }, 'Unhandled promise rejection, shutting down gracefully');
   shutdown('unhandledRejection', 1);
 });
 
 for (const signal of ['SIGTERM', 'SIGINT']) {
   process.on(signal, () => {
     if (isShuttingDown) {
-      logger.warn(`${signal} received again, forcing exit`);
+      logger.warn({ signal }, 'Signal received again, forcing exit');
       process.exit(1);
     }
     shutdown(signal, 0);

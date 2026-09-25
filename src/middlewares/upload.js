@@ -67,6 +67,6 @@ export const cleanupUploadedFiles = async (req) => {
   const results = await Promise.allSettled(files.map((f) => fileRepository.removeFile(f.path)));
   const failed = results.filter((r) => r.status === 'rejected');
 
-  failed.forEach((r) => logger.error('Failed to remove orphaned upload', r.reason));
-  logger.debug(`Removed ${files.length - failed.length} orphaned upload(s)`);
+  failed.forEach((r) => logger.error({ err: r.reason }, 'Failed to remove orphaned upload'));
+  logger.debug({ removed: files.length - failed.length }, 'Removed orphaned uploads');
 };
