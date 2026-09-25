@@ -4,7 +4,7 @@ import { MediaCategory } from '../generated/prisma/enums.ts';
 export { MediaCategory };
 export const MEDIA_CATEGORIES = Object.values(MediaCategory);
 
-// Signatures are the magic bytes each format starts with; the client-declared MIME type can be spoofed.
+// Signatures are each format's magic bytes; the client-declared MIME type alone can be spoofed.
 export const ALLOWED_FILE_TYPES = Object.freeze({
   'image/jpeg': { extension: '.jpg', signature: [0xff, 0xd8, 0xff] },
   'image/png': { extension: '.png', signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },

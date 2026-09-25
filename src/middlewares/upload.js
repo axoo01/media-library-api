@@ -59,7 +59,7 @@ const verifyFileSignatures = catchAsync(async (req, _res, next) => {
 export const uploadSingle = [multerUpload.single('file'), verifyFileSignatures];
 export const uploadMany = [multerUpload.array('files', MAX_BULK_FILES), verifyFileSignatures];
 
-// Multer writes files before validation and business logic run, so a failed request must remove them.
+// Multer saves files before validation runs, so any failed request must delete them.
 export const cleanupUploadedFiles = async (req) => {
   const files = collectUploadedFiles(req);
   if (files.length === 0) return;

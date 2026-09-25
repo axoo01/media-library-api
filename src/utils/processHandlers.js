@@ -18,6 +18,7 @@ export const shutdown = async (reason, exitCode = 0) => {
     logger.error(`Shutdown timed out after ${env.SHUTDOWN_TIMEOUT_MS}ms, forcing exit`);
     process.exit(1);
   }, env.SHUTDOWN_TIMEOUT_MS);
+  // unref() so this timer alone never keeps the process alive once cleanup finishes.
   forceExitTimer.unref();
 
   let code = exitCode;

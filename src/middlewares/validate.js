@@ -8,6 +8,7 @@ const formatIssues = (issues) =>
   issues.flatMap((issue) => {
     const field = toField(issue.path);
 
+    // Zod reports all unknown keys as one issue on the parent; split it into one detail per key.
     if (issue.code === 'unrecognized_keys') {
       const prefix = issue.path.length > 1 ? `${field}.` : '';
       return issue.keys.map((key) => ({

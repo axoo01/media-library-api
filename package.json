@@ -17,6 +17,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "test:postman": "node postman/generate-large-fixture.js && newman run postman/media-library-api.postman_collection.json -e postman/local.postman_environment.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -27,6 +28,7 @@
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
+    "newman": "^6.2.2",
     "prettier": "^3.9.9",
     "prisma": "7.10.0"
   },

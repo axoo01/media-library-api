@@ -4,9 +4,9 @@ import env from './env.js';
 import logger from '../utils/logger.js';
 
 // ES modules are cached after first import, so this instance is a process-wide singleton.
-// Query errors are not logged here; they reach the global error handler, which logs them once.
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+  // No 'error' level: query errors reach the global error handler, which logs them once.
   log: ['warn'],
 });
 

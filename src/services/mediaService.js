@@ -59,7 +59,7 @@ export const updateMedia = async (id, changes) => {
   return media;
 };
 
-// Record first, then file: an orphaned file is harmless, a record pointing at a missing file is not.
+// Record first, then file: an orphaned file is harmless, a record without its file is not.
 export const deleteMedia = async (id) => {
   const media = await mediaRepository.deleteById(id);
   if (!media) throw notFound();

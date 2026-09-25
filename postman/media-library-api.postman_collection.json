@@ -1,0 +1,1001 @@
+{
+  "info": {
+    "name": "Media Library API",
+    "description": "Requests and edge-case tests for the Media Library API. Run the \"Media lifecycle\" folder in order: it stores mediaId and bulk ids in collection variables for later requests. File paths are relative to the project root, so run Newman from there (npm run test:postman) or set Postman's working directory to the project root.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "description": "Overridden by the selected environment"
+    },
+    {
+      "key": "mediaId",
+      "value": ""
+    },
+    {
+      "key": "bulkId1",
+      "value": ""
+    },
+    {
+      "key": "bulkId2",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Response uses the standard envelope', () => {",
+          "  const body = pm.response.json();",
+          "  pm.expect(body.status).to.be.oneOf(['success', 'error']);",
+          "  if (body.status === 'success') {",
+          "    pm.expect(body).to.have.property('data');",
+          "  } else {",
+          "    pm.expect(body.message).to.be.a('string');",
+          "    pm.expect(body.details).to.be.an('array');",
+          "  }",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Media lifecycle",
+      "description": "Happy path, in order: upload, bulk upload, list, filter, get, update, delete.",
+      "item": [
+        {
+          "name": "Upload media",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "        const { media } = pm.response.json().data;",
+                  "        pm.test('Metadata is stored and normalized', () => {",
+                  "          pm.expect(media.title).to.eql('Postman sunset');",
+                  "          pm.expect(media.tags).to.eql(['postman', 'beach', 'summer']);",
+                  "          pm.expect(media.category).to.eql('IMAGE');",
+                  "          pm.expect(media.mimeType).to.eql('image/png');",
+                  "          pm.expect(media.originalName).to.eql('sample.png');",
+                  "          pm.expect(media.fileSize).to.be.above(0);",
+                  "          pm.expect(media.filePath).to.match(/^uploads\\/[0-9a-f-]{36}\\.png$/);",
+                  "        });",
+                  "        pm.collectionVariables.set('mediaId', media.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/sample.png"
+                },
+                {
+                  "key": "title",
+                  "value": "Postman sunset",
+                  "type": "text"
+                },
+                {
+                  "key": "tags",
+                  "value": "Postman, Beach,summer",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "image",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk upload media",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "        const { results, count } = pm.response.json().data;",
+                  "        pm.test('Both files are saved with titles from their filenames', () => {",
+                  "          pm.expect(count).to.eql(2);",
+                  "          results.forEach((r) => pm.expect(r.title).to.eql('sample'));",
+                  "          pm.expect(results.map((r) => r.mimeType)).to.have.members(['image/jpeg', 'application/pdf']);",
+                  "        });",
+                  "        pm.collectionVariables.set('bulkId1', results[0].id);",
+                  "        pm.collectionVariables.set('bulkId2', results[1].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "bulk"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "postman/fixtures/sample.jpg"
+                },
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": "postman/fixtures/sample.pdf"
+                },
+                {
+                  "key": "tags",
+                  "value": "postman,bulk",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "OTHER",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List media (defaults)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "        const { results, pagination } = pm.response.json().data;",
+                  "        pm.test('Pagination uses defaults', () => {",
+                  "          pm.expect(pagination).to.include({ page: 1, limit: 10 });",
+                  "          pm.expect(pagination.totalPages).to.eql(Math.ceil(pagination.total / 10));",
+                  "          pm.expect(results.length).to.be.at.most(10);",
+                  "        });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"]
+            }
+          }
+        },
+        {
+          "name": "List media (filter, search, sort)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "        const { results } = pm.response.json().data;",
+                  "        pm.test('Every result matches all filters', () => {",
+                  "          pm.expect(results.length).to.be.above(0);",
+                  "          results.forEach((r) => {",
+                  "            pm.expect(r.category).to.eql('IMAGE');",
+                  "            pm.expect(r.tags.some((t) => ['postman', 'travel'].includes(t))).to.be.true;",
+                  "            pm.expect(r.title.toLowerCase()).to.include('sunset');",
+                  "          });",
+                  "        });",
+                  "        pm.test('Uploaded media is found', () =>",
+                  "          pm.expect(results.map((r) => r.id)).to.include(pm.collectionVariables.get('mediaId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media?page=1&limit=5&category=IMAGE&tags=postman,travel&search=SUNSET&sortBy=title&order=asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "category",
+                  "value": "IMAGE"
+                },
+                {
+                  "key": "tags",
+                  "value": "postman,travel"
+                },
+                {
+                  "key": "search",
+                  "value": "SUNSET"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "title"
+                },
+                {
+                  "key": "order",
+                  "value": "asc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get media by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "        pm.test('Returns the requested media', () =>",
+                  "          pm.expect(pm.response.json().data.media.id).to.eql(pm.collectionVariables.get('mediaId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "{{mediaId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update media metadata",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "        const { media } = pm.response.json().data;",
+                  "        pm.test('Metadata is updated', () => {",
+                  "          pm.expect(media.title).to.eql('Postman sunset (edited)');",
+                  "          pm.expect(media.tags).to.eql(['edited', 'postman']);",
+                  "          pm.expect(media.category).to.eql('OTHER');",
+                  "        });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "{{mediaId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman sunset (edited)\",\n  \"tags\": [\n    \"Edited\",\n    \"postman\"\n  ],\n  \"category\": \"OTHER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete media",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "        pm.test('Data is null', () => pm.expect(pm.response.json().data).to.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "{{mediaId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get deleted media returns 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Media not found\"', () => pm.expect(body.message).to.eql('Media not found'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "{{mediaId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete bulk item 1 (cleanup)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{bulkId1}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "{{bulkId1}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete bulk item 2 (cleanup)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{bulkId2}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "{{bulkId2}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edge cases",
+      "description": "Invalid file type, oversized file, missing fields and invalid query parameters.",
+      "item": [
+        {
+          "name": "Invalid file type (text/plain)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Unsupported file type\"', () => pm.expect(body.message).to.eql('Unsupported file type'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"file\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/notes.txt"
+                },
+                {
+                  "key": "title",
+                  "value": "Notes",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "OTHER",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Spoofed file type (text renamed to .png)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Unsupported file type\"', () => pm.expect(body.message).to.eql('Unsupported file type'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"file\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/fake-image.png"
+                },
+                {
+                  "key": "title",
+                  "value": "Fake",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "IMAGE",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Oversized file (> 5MB)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"File exceeds the 5MB size limit\"', () => pm.expect(body.message).to.eql('File exceeds the 5MB size limit'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"file\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/large.png"
+                },
+                {
+                  "key": "title",
+                  "value": "Too big",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "IMAGE",
+                  "type": "text"
+                }
+              ]
+            },
+            "description": "Uses postman/fixtures/large.png, created by `npm run test:postman` (postman/generate-large-fixture.js)."
+          }
+        },
+        {
+          "name": "Missing fields (title and category)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"title\",\"category\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/sample.png"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Missing file",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"file\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "No file",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "IMAGE",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"category\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "postman/fixtures/sample.png"
+                },
+                {
+                  "key": "title",
+                  "value": "Bad category",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "MOVIE",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk upload without files",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"files\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "bulk"]
+            },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "category",
+                  "value": "IMAGE",
+                  "type": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid query parameters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"page\",\"limit\",\"sortBy\",\"order\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media?page=0&limit=51&sortBy=password&order=up",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "51"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "password"
+                },
+                {
+                  "key": "order",
+                  "value": "up"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Non-numeric page and unknown parameter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"page\",\"foo\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media?page=abc&foo=bar",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "abc"
+                },
+                {
+                  "key": "foo",
+                  "value": "bar"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Page beyond total pages returns empty results",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200, not 404', () => pm.response.to.have.status(200));",
+                  "        const { results, pagination } = pm.response.json().data;",
+                  "        pm.test('Results are empty with correct metadata', () => {",
+                  "          pm.expect(results).to.eql([]);",
+                  "          pm.expect(pagination.page).to.eql(9999);",
+                  "          pm.expect(pagination.totalPages).to.eql(Math.ceil(pagination.total / 10));",
+                  "        });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media?page=9999&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["media"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "9999"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Invalid media id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"id\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/media/not-a-uuid",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "not-a-uuid"]
+            }
+          }
+        },
+        {
+          "name": "Update with no fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"body\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "{{mediaId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update read-only fields (mass assignment)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Validation failed\"', () => pm.expect(body.message).to.eql('Validation failed'));",
+                  "pm.test('Details name the invalid fields', () => pm.expect(body.details.map((d) => d.field)).to.include.members([\"filePath\",\"fileSize\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["media", "{{mediaId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"ok\",\n  \"filePath\": \"/etc/passwd\",\n  \"fileSize\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Unknown route",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test('Error message is \"Route GET /unknown not found\"', () => pm.expect(body.message).to.eql('Route GET /unknown not found'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/unknown",
+              "host": ["{{baseUrl}}"],
+              "path": ["unknown"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

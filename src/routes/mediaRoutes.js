@@ -13,7 +13,7 @@ import {
 
 const router = Router();
 
-// Multer must run before validate(): multipart fields and files don't exist until it parses the body.
+// Multer must run before validate(): req.body and req.file don't exist until it parses the body.
 router
   .route('/')
   .get(validate(listMediaSchema), catchAsync(mediaController.getAll))

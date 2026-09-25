@@ -27,6 +27,7 @@ try {
 const server = app.listen(env.PORT);
 
 try {
+  // Resolves on 'listening', rejects on 'error' (e.g. EADDRINUSE when the port is taken).
   await once(server, 'listening');
   logger.info(`Media Library API listening on port ${env.PORT} (${env.NODE_ENV})`);
 } catch (err) {

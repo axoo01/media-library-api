@@ -13,7 +13,7 @@ const resolveUploadPath = (filePath) => {
 
 export const ensureUploadDir = () => fs.mkdir(UPLOAD_DIR, { recursive: true });
 
-// Stored relative to the project root with forward slashes, so records stay valid if the project moves.
+// Relative to the project root with forward slashes, so records survive moving the project.
 export const toStoredPath = (absolutePath) =>
   path.relative(PROJECT_ROOT, absolutePath).split(path.sep).join('/');
 
