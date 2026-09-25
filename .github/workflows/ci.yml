@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A newer push to the same branch or PR cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, test and API checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      # The official image creates UTF-8 databases with ICU collations, which the title migration needs.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: media_library_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # CI-only values; no .env files exist in the repository.
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/media_library_test
+      JWT_SECRET: ci-only-secret-used-for-tests-and-nothing-else
+      MAX_FILE_SIZE_MB: 5
+      UPLOAD_DIR: tmp/test-uploads
+      LOG_LEVEL: silent
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Start API
+        run: |
+          node server.js > api.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/health && exit 0
+            sleep 1
+          done
+          cat api.log
+          exit 1
+
+      - name: Run Postman collection (Newman)
+        run: npm run test:postman
