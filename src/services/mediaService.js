@@ -47,19 +47,25 @@ export const getMediaById = async (id) => {
   return media;
 };
 
+export const toOffset = (page, limit) => (page - 1) * limit;
+
+export const buildPagination = ({ total, page, limit }) => ({
+  total,
+  page,
+  limit,
+  totalPages: Math.ceil(total / limit),
+});
+
 export const listMedia = async ({ page, limit, sortBy, order, category, tags, search }) => {
   const { results, total } = await mediaRepository.findAndCount({
     filters: { category, tags, search },
     sortBy,
     order,
-    offset: (page - 1) * limit,
+    offset: toOffset(page, limit),
     limit,
   });
 
-  return {
-    results,
-    pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
-  };
+  return { results, pagination: buildPagination({ total, page, limit }) };
 };
 
 export const updateMedia = async (id, changes) => {
