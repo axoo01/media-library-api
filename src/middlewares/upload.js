@@ -3,14 +3,9 @@ import multer from 'multer';
 import AppError from '../utils/AppError.js';
 import catchAsync from '../utils/catchAsync.js';
 import logger from '../utils/logger.js';
-import { UPLOAD_DIR } from '../config/storage.js';
+import { MAX_FILE_SIZE_BYTES, UPLOAD_DIR } from '../config/storage.js';
 import * as fileRepository from '../repositories/fileRepository.js';
-import {
-  ALLOWED_FILE_TYPES,
-  ALLOWED_MIME_TYPES,
-  MAX_BULK_FILES,
-  MAX_FILE_SIZE,
-} from '../models/Media.js';
+import { ALLOWED_FILE_TYPES, ALLOWED_MIME_TYPES, MAX_BULK_FILES } from '../models/Media.js';
 
 const unsupportedFileType = (field, message) =>
   AppError.badRequest('Unsupported file type', [{ field, message }]);
@@ -34,7 +29,12 @@ const multerUpload = multer({
   storage,
   fileFilter,
   defParamCharset: 'utf8',
-  limits: { fileSize: MAX_FILE_SIZE, files: MAX_BULK_FILES, fields: 10, fieldSize: 10 * 1024 },
+  limits: {
+    fileSize: MAX_FILE_SIZE_BYTES,
+    files: MAX_BULK_FILES,
+    fields: 10,
+    fieldSize: 10 * 1024,
+  },
 });
 
 // Multer leaves path-less placeholders in req.files when it aborts (it removes those files itself).
@@ -67,6 +67,6 @@ export const cleanupUploadedFiles = async (req) => {
   const results = await Promise.allSettled(files.map((f) => fileRepository.removeFile(f.path)));
   const failed = results.filter((r) => r.status === 'rejected');
 
-  failed.forEach((r) => logger.error('Failed to remove orphaned upload', r.reason));
-  logger.debug(`Removed ${files.length - failed.length} orphaned upload(s)`);
+  failed.forEach((r) => logger.error({ err: r.reason }, 'Failed to remove orphaned upload'));
+  logger.debug({ removed: files.length - failed.length }, 'Removed orphaned uploads');
 };

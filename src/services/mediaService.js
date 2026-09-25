@@ -21,16 +21,25 @@ const toMediaRecord = (file, { title, tags, category }) => ({
 const titleFromFilename = (filename) =>
   path.parse(filename).name.trim().slice(0, MAX_NAME_LENGTH) || 'Untitled';
 
-export const createMedia = (file, metadata) =>
-  mediaRepository.create(toMediaRecord(file, metadata));
+const logUpload = ({ id, originalName, mimeType, fileSize, filePath }) =>
+  logger.info({ mediaId: id, originalName, mimeType, fileSize, filePath }, 'File uploaded');
+
+export const createMedia = async (file, metadata) => {
+  const media = await mediaRepository.create(toMediaRecord(file, metadata));
+  logUpload(media);
+  return media;
+};
 
 // Bulk uploads share tags and category; each title is derived from its original filename.
-export const createMediaBatch = (files, metadata) =>
-  mediaRepository.createMany(
+export const createMediaBatch = async (files, metadata) => {
+  const records = await mediaRepository.createMany(
     files.map((file) =>
       toMediaRecord(file, { ...metadata, title: titleFromFilename(file.originalname) }),
     ),
   );
+  records.forEach(logUpload);
+  return records;
+};
 
 export const getMediaById = async (id) => {
   const media = await mediaRepository.findById(id);
@@ -38,19 +47,25 @@ export const getMediaById = async (id) => {
   return media;
 };
 
+export const toOffset = (page, limit) => (page - 1) * limit;
+
+export const buildPagination = ({ total, page, limit }) => ({
+  total,
+  page,
+  limit,
+  totalPages: Math.ceil(total / limit),
+});
+
 export const listMedia = async ({ page, limit, sortBy, order, category, tags, search }) => {
   const { results, total } = await mediaRepository.findAndCount({
     filters: { category, tags, search },
     sortBy,
     order,
-    offset: (page - 1) * limit,
+    offset: toOffset(page, limit),
     limit,
   });
 
-  return {
-    results,
-    pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
-  };
+  return { results, pagination: buildPagination({ total, page, limit }) };
 };
 
 export const updateMedia = async (id, changes) => {
@@ -67,6 +82,9 @@ export const deleteMedia = async (id) => {
   try {
     await fileRepository.removeFile(media.filePath);
   } catch (err) {
-    logger.error(`Media ${id} deleted but its file could not be removed: ${media.filePath}`, err);
+    logger.error(
+      { err, mediaId: id, filePath: media.filePath },
+      'Media deleted but its file could not be removed',
+    );
   }
 };

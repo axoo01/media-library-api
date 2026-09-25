@@ -1,5 +1,7 @@
 # Media Library API
 
+[![CI](https://github.com/axoo01/media-library-api/actions/workflows/ci.yml/badge.svg)](https://github.com/axoo01/media-library-api/actions/workflows/ci.yml)
+
 A REST API for uploading, organizing and searching media assets (images and PDFs), built with Node.js, Express 5, PostgreSQL, Prisma 7, Zod and Multer.
 
 It follows a four-layer architecture, validates every input, returns a consistent response structure, and keeps the database and the upload directory in sync on every success and failure path.
@@ -85,7 +87,8 @@ All variables are validated with Zod at startup; the process exits with a clear 
 | `npm run db:deploy`               | Apply pending migrations                                                     |
 | `npm run db:seed`                 | Replace the seed records (never touches real uploads; refuses in production) |
 | `npm run db:studio`               | Open Prisma Studio                                                           |
-| `npm run test:postman`            | Run the Postman collection with Newman (server must be running)              |
+| `npm run test:postman`            | Run the Postman collection against Development (server must be running)      |
+| `npm run test:postman:prod`       | Run the Postman collection against the Production (Vercel) environment       |
 | `npm run lint` / `npm run format` | ESLint / Prettier                                                            |
 
 ## API reference
@@ -292,16 +295,64 @@ Prisma has no case-insensitive `orderBy`, so the `title` column uses the ICU col
 - Process handlers are the first import in `server.js`. `uncaughtException` exits immediately; `unhandledRejection`, `SIGTERM` and `SIGINT` close the HTTP server, then the database, with a forced-exit timeout.
 - The code uses `async`/`await` only; an ESLint rule forbids `.then()` / `.catch()` chains.
 
+### Serverless deployment & Ephemeral filesystem limitations
+
+Vercel functions run in ephemeral, stateless serverless containers:
+
+- **Disk Storage**: Serverless environments provide a read-only filesystem, except for `/tmp`. In production on Vercel, `UPLOAD_DIR` must be configured to `/tmp`.
+- **Ephemeral Files**: Uploaded files written to `/tmp` are short-lived and discarded when serverless instances spin down or restart.
+- **Production Storage Solution**: For permanent file storage in production, local disk storage (`Multer.diskStorage`) should be replaced with an object storage service such as **AWS S3** or **Cloudinary**, using pre-signed upload URLs or SDK direct streams.
+
 ## Testing with Postman / Newman
 
-The collection in `postman/` covers every endpoint and the edge cases from the lab brief: invalid file type, spoofed file, oversized file, missing fields and invalid query parameters. Its tests check status codes, the response envelope and field-level error details.
+The collection `postman/media-library-api.postman_collection.json` covers every endpoint and the edge cases from the lab brief: invalid file type, spoofed file, oversized file, missing fields and invalid query parameters. Every request checks its status code; every JSON response is checked for the standard envelope, and media objects for all required fields.
 
-With the server running:
+Two environments define `{{BASE_URL}}` and `{{MEDIA_ID}}`:
+
+| Environment | File                                                             | `BASE_URL`                |
+| ----------- | ---------------------------------------------------------------- | ------------------------- |
+| Development | `postman/media-library-api.development.postman_environment.json` | `http://localhost:3000`   |
+| Production  | `postman/media-library-api.production.postman_environment.json`  | the Vercel deployment URL |
 
 ```bash
-npm run test:postman
+npm run test:postman        # Development (server must be running)
+npm run test:postman:prod   # Production
 ```
 
-This generates the oversized fixture (`postman/fixtures/large.png`, git-ignored) and runs Newman with the local environment.
+Both scripts generate the oversized fixture (`postman/fixtures/large.png`, git-ignored) and run Newman. "Upload media" stores `MEDIA_ID` in the active environment, and the lifecycle deletes everything it creates. The oversized-file test accepts 400 (the API's own limit) or 413 (Vercel rejects request bodies over 4.5MB before they reach the API).
 
-To use Postman instead: import `postman/media-library-api.postman_collection.json` and `postman/local.postman_environment.json`, set Postman's working directory to the project root (Settings → General) so fixture paths resolve, generate the large fixture once with `node postman/generate-large-fixture.js`, and run the collection in order. The lifecycle requests store `mediaId`, `bulkId1` and `bulkId2` in collection variables and clean up after themselves.
+To use the Postman app: import the collection and both environments, set the working directory to the project root (Settings → General) so fixture paths resolve, run `node postman/generate-large-fixture.js` once, then run the collection in order.
+
+## Deployment & Monitoring
+
+### Vercel Deployment Setup
+
+1. **Database Migration**:
+   Apply pending Prisma migrations to your production PostgreSQL database (e.g. Neon):
+   ```bash
+   DATABASE_URL="postgresql://<user>:<password>@<neon-host>/media_library?sslmode=require" npm run db:deploy
+   ```
+2. **Environment Variables**:
+   Configure the following environment variables in Vercel Dashboard (**Settings → Environment Variables**):
+   - `NODE_ENV`: `production`
+   - `PORT`: `3000`
+   - `DATABASE_URL`: `postgresql://<user>:<password>@<neon-host>/media_library?sslmode=require`
+   - `JWT_SECRET`: `<32+-char-secret>`
+   - `MAX_FILE_SIZE_MB`: `5`
+   - `UPLOAD_DIR`: `/tmp`
+   - `LOG_LEVEL`: `info`
+
+3. **Production Verification**:
+   Once deployed, update `postman/media-library-api.production.postman_environment.json` with your live Vercel URL and run:
+   ```bash
+   npm run test:postman:prod
+   ```
+
+### Uptime Monitoring (UptimeRobot / Better Stack)
+
+Monitor the API health and DB connectivity using the `/health` endpoint:
+
+- **Monitor Type**: HTTP(s)
+- **URL**: `https://<your-vercel-app>.vercel.app/health`
+- **Interval**: 5 minutes
+- **Expected Keyword / Status**: `200 OK` with body containing `"status":"ok"`
