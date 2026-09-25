@@ -29,16 +29,19 @@
       "script": {
         "type": "text/javascript",
         "exec": [
-          "pm.test('Response uses the standard envelope', () => {",
-          "  const body = pm.response.json();",
-          "  pm.expect(body.status).to.be.oneOf(['success', 'error']);",
-          "  if (body.status === 'success') {",
-          "    pm.expect(body).to.have.property('data');",
-          "  } else {",
-          "    pm.expect(body.message).to.be.a('string');",
-          "    pm.expect(body.details).to.be.an('array');",
-          "  }",
-          "});"
+          "// /health has its own contract (checked on its request), so it is excluded here.",
+          "if (pm.request.url.getPath() !== '/health') {",
+          "  pm.test('Response uses the standard envelope', () => {",
+          "    const body = pm.response.json();",
+          "    pm.expect(body.status).to.be.oneOf(['success', 'error']);",
+          "    if (body.status === 'success') {",
+          "      pm.expect(body).to.have.property('data');",
+          "    } else {",
+          "      pm.expect(body.message).to.be.a('string');",
+          "      pm.expect(body.details).to.be.an('array');",
+          "    }",
+          "  });",
+          "}"
         ]
       }
     }
@@ -54,7 +57,16 @@
               "listen": "test",
               "script": {
                 "type": "text/javascript",
-                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Body is { status: \"ok\", uptime, timestamp }', () => {",
+                  "  pm.expect(body.status).to.eql('ok');",
+                  "  pm.expect(body.uptime).to.be.a('number').and.to.be.at.least(0);",
+                  "  pm.expect(new Date(body.timestamp).toISOString()).to.eql(body.timestamp);",
+                  "});",
+                  "pm.test('Health responses are not cached', () => pm.response.to.have.header('Cache-Control', 'no-store'));"
+                ]
               }
             }
           ],
