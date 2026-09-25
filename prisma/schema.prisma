@@ -1,0 +1,36 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MediaCategory {
+  IMAGE
+  DOCUMENT
+  VIDEO
+  AUDIO
+  ARCHIVE
+  OTHER
+}
+
+model Media {
+  id           String        @id @default(uuid(7)) @db.Uuid
+  title        String        @db.VarChar(255)
+  filePath     String        @unique @map("file_path")
+  originalName String        @map("original_name") @db.VarChar(255)
+  mimeType     String        @map("mime_type") @db.VarChar(100)
+  fileSize     Int           @map("file_size")
+  tags         String[]      @default([])
+  category     MediaCategory
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([category])
+  @@index([createdAt])
+  @@index([tags], type: Gin)
+  @@map("media")
+}
