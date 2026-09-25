@@ -1,9 +1,22 @@
+import { Prisma } from '../generated/prisma/client.ts';
 import AppError from '../utils/AppError.js';
 import logger from '../utils/logger.js';
 import { sendError } from '../utils/apiResponse.js';
 
+const PRISMA_ERROR_MAP = {
+  P2025: () => AppError.notFound('Media not found'),
+  P2002: (err) =>
+    new AppError('Resource already exists', 409, [
+      { field: String(err.meta?.target ?? 'unknown'), message: 'Must be unique' },
+    ]),
+};
+
 const normalizeError = (err) => {
   if (err instanceof AppError) return err;
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError && PRISMA_ERROR_MAP[err.code]) {
+    return PRISMA_ERROR_MAP[err.code](err);
+  }
 
   if (err.type === 'entity.parse.failed') {
     return AppError.badRequest('Malformed JSON in request body');
