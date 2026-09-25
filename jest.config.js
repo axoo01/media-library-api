@@ -13,4 +13,11 @@ export default {
   globalSetup: '<rootDir>/src/tests/setup/globalSetup.js',
   globalTeardown: '<rootDir>/src/tests/setup/globalTeardown.js',
   clearMocks: true,
+  collectCoverageFrom: ['src/**/*.js', '!src/tests/**'],
+  coverageReporters: ['text', 'text-summary', 'lcov', 'json-summary'],
+  // The lab requires at least 80% for services and middleware; the build fails below it.
+  coverageThreshold: {
+    './src/services/': { statements: 80, branches: 80, functions: 80, lines: 80 },
+    './src/middlewares/': { statements: 80, branches: 80, functions: 80, lines: 80 },
+  },
 };
